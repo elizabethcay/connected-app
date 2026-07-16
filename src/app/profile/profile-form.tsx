@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { roleLabel } from "@/lib/role-label";
 
 type Profile = {
-  role: "mentor" | "mentee" | string;
+  role: string;
   full_name: string | null;
   bio: string | null;
   avatar_url: string | null;
@@ -29,6 +30,9 @@ export function ProfileForm({
     e.preventDefault();
     setStatus("saving");
 
+    // role is sent unchanged (never editable here) so this still works
+    // as an upsert if the row doesn't exist yet -- role is NOT NULL and
+    // a DB trigger reverts any attempted change to it anyway.
     const { error } = await supabase.from("profiles").upsert({
       id: userId,
       role: initialProfile.role,
@@ -44,9 +48,7 @@ export function ProfileForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1">
         <span className="block text-sm font-medium">Role</span>
-        <p className="text-sm capitalize text-gray-600">
-          {initialProfile.role}
-        </p>
+        <p className="text-sm text-gray-600">{roleLabel(initialProfile.role)}</p>
       </div>
 
       <div className="space-y-1">
