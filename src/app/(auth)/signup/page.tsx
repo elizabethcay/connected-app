@@ -2,17 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Inter } from "next/font/google";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyAuthError } from "@/lib/supabase/auth-errors";
 
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600"] });
+
 type SignupPath = "mentee" | "mentor_applicant";
 
-type ApplicationDetails = {
-  experience: string;
+type MenteeDetails = {
+  bio: string;
+};
+
+type MentorApplicationDetails = {
+  year_program_school: string;
+  background_experience: string;
   motivation: string;
   linkedin_url: string | null;
-  co_op_history: string | null;
 };
 
 export default function SignupPage() {
@@ -20,15 +27,18 @@ export default function SignupPage() {
   const supabase = createClient();
 
   const [path, setPath] = useState<SignupPath>("mentee");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
 
-  const [experience, setExperience] = useState("");
+  const [bio, setBio] = useState("");
+
+  const [yearProgramSchool, setYearProgramSchool] = useState("");
+  const [backgroundExperience, setBackgroundExperience] = useState("");
   const [motivation, setMotivation] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
-  const [coOpHistory, setCoOpHistory] = useState("");
 
+  const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
@@ -39,12 +49,15 @@ export default function SignupPage() {
     setSubmitting(true);
 
     const applyingAsMentor = path === "mentor_applicant";
-    const applicationDetails: ApplicationDetails | null = applyingAsMentor
+    const menteeDetails: MenteeDetails | null = applyingAsMentor
+      ? null
+      : { bio };
+    const applicationDetails: MentorApplicationDetails | null = applyingAsMentor
       ? {
-          experience,
+          year_program_school: yearProgramSchool,
+          background_experience: backgroundExperience,
           motivation,
           linkedin_url: linkedinUrl || null,
-          co_op_history: coOpHistory || null,
         }
       : null;
 
@@ -55,6 +68,7 @@ export default function SignupPage() {
         data: {
           role: path,
           full_name: fullName || null,
+          bio: menteeDetails?.bio || null,
           application_details: applicationDetails,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback?next=/feed`,
@@ -79,6 +93,7 @@ export default function SignupPage() {
         id: data.user.id,
         role: path,
         full_name: fullName || null,
+        bio: menteeDetails?.bio || null,
       });
 
       if (applyingAsMentor) {
@@ -100,176 +115,250 @@ export default function SignupPage() {
     }
   }
 
-  if (checkEmail) {
-    return (
-      <div className="w-full max-w-sm text-center">
-        <h1 className="text-xl font-semibold">Check your email</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          We sent a confirmation link to <strong>{email}</strong>. Click it to
-          finish creating your account.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-      <h1 className="text-xl font-semibold">Sign up</h1>
+    <div
+      className={`${inter.className} fixed inset-0 overflow-y-auto bg-[#FFFBEF]`}
+    >
+      <div className="mx-auto flex min-h-full w-full max-w-[560px] flex-col px-6 py-10">
+        <div className="relative flex flex-col items-center">
+          <Link
+            href="/"
+            aria-label="Close"
+            className="absolute right-0 top-2 text-[#565D4E]"
+          >
+            <svg width="21" height="21" viewBox="0 0 21 21" fill="none">
+              <path
+                d="M1 1L20 20M20 1L1 20"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </Link>
 
-      <div
-        role="tablist"
-        aria-label="Signup path"
-        className="grid grid-cols-2 gap-1 rounded border p-1 text-sm"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={path === "mentee"}
-          onClick={() => setPath("mentee")}
-          className={`rounded px-3 py-2 ${
-            path === "mentee" ? "bg-black text-white" : "text-gray-600"
-          }`}
-        >
-          Join as a Mentee
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={path === "mentor_applicant"}
-          onClick={() => setPath("mentor_applicant")}
-          className={`rounded px-3 py-2 ${
-            path === "mentor_applicant" ? "bg-black text-white" : "text-gray-600"
-          }`}
-        >
-          Apply to be a Mentor
-        </button>
-      </div>
-
-      <div className="space-y-1">
-        <label htmlFor="full_name" className="block text-sm font-medium">
-          Full name
-        </label>
-        <input
-          id="full_name"
-          type="text"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-        />
-      </div>
-
-      <div className="space-y-1">
-        <label htmlFor="email" className="block text-sm font-medium">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-        />
-      </div>
-
-      <div className="space-y-1">
-        <label htmlFor="password" className="block text-sm font-medium">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          required
-          minLength={6}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-        />
-      </div>
-
-      {path === "mentor_applicant" && (
-        <div className="space-y-4 rounded border p-4">
-          <p className="text-sm text-gray-600">
-            Mentor applications are reviewed by our team. You&apos;ll start
-            out as a mentor applicant and be promoted once approved.
-          </p>
-
-          <div className="space-y-1">
-            <label htmlFor="experience" className="block text-sm font-medium">
-              Relevant experience
-            </label>
-            <textarea
-              id="experience"
-              required
-              rows={3}
-              value={experience}
-              onChange={(e) => setExperience(e.target.value)}
-              className="w-full rounded border px-3 py-2"
+          <div className="relative h-12 w-36 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element -- cropped via a scale+offset that next/image's fill/object-fit model can't express */}
+            <img
+              src="/connected-logo.png"
+              alt="ConnectEd"
+              className="absolute max-w-none"
+              style={{
+                width: "185.08%",
+                height: "298.03%",
+                left: "-43.98%",
+                top: "-78.31%",
+              }}
             />
           </div>
 
-          <div className="space-y-1">
-            <label htmlFor="motivation" className="block text-sm font-medium">
-              Why do you want to mentor?
-            </label>
-            <textarea
-              id="motivation"
-              required
-              rows={3}
-              value={motivation}
-              onChange={(e) => setMotivation(e.target.value)}
-              className="w-full rounded border px-3 py-2"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="linkedin_url" className="block text-sm font-medium">
-              LinkedIn URL
-            </label>
-            <input
-              id="linkedin_url"
-              type="url"
-              value={linkedinUrl}
-              onChange={(e) => setLinkedinUrl(e.target.value)}
-              className="w-full rounded border px-3 py-2"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="co_op_history" className="block text-sm font-medium">
-              Co-op / work history
-            </label>
-            <textarea
-              id="co_op_history"
-              rows={3}
-              value={coOpHistory}
-              onChange={(e) => setCoOpHistory(e.target.value)}
-              className="w-full rounded border px-3 py-2"
-            />
-          </div>
+          {!checkEmail && (
+            <>
+              <h1 className="mt-6 text-center text-[30px] font-semibold leading-[1.2] tracking-[-0.02em] text-[#2C3526]">
+                Welcome to ConnectEd
+              </h1>
+              <p className="mt-2 text-center text-[18px] font-medium text-[#565D4E]">
+                Let&apos;s set up your profile to get started.
+              </p>
+            </>
+          )}
         </div>
-      )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+        {checkEmail ? (
+          <div className="mt-10 text-center">
+            <h2 className="text-[18px] font-medium text-[#2C3526]">
+              Check your email
+            </h2>
+            <p className="mt-2 text-[15px] font-medium text-[#565D4E]">
+              We sent a confirmation link to <strong>{email}</strong>. Click
+              it to finish creating your account.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+            <div className="flex w-full overflow-hidden rounded-[15px]">
+              <button
+                type="button"
+                onClick={() => setPath("mentee")}
+                className="flex-1 py-2.5 text-[15px] font-medium text-[#FFFBEF]"
+                style={{
+                  backgroundColor: path === "mentee" ? "#51733A" : "#658753",
+                }}
+              >
+                Join as a Mentee
+              </button>
+              <button
+                type="button"
+                onClick={() => setPath("mentor_applicant")}
+                className="flex-1 py-2.5 text-[15px] font-medium text-[#FFFBEF]"
+                style={{
+                  backgroundColor:
+                    path === "mentor_applicant" ? "#51733A" : "#658753",
+                }}
+              >
+                Apply to be a Mentor
+              </button>
+            </div>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded bg-black px-3 py-2 text-white disabled:opacity-50"
-      >
-        {submitting
-          ? "Creating account…"
-          : path === "mentor_applicant"
-            ? "Submit application"
-            : "Sign up"}
-      </button>
+            <Field label="Full Name">
+              <input
+                type="text"
+                required
+                placeholder="Your name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
 
-      <p className="text-center text-sm text-gray-600">
-        Already have an account?{" "}
-        <Link href="/login" className="underline">
-          Log in
-        </Link>
-      </p>
-    </form>
+            <Field label="Email">
+              <input
+                type="email"
+                required
+                placeholder="Your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+
+            <Field label="Password">
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClass}
+              />
+            </Field>
+
+            {path === "mentee" ? (
+              <Field label="Bio">
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="A short blurb about you.."
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+            ) : (
+              <>
+                <p className="text-center text-[15px] font-medium text-[#565D4E]">
+                  Mentor applications are hand reviewed by our team.
+                  You&apos;ll be notified of a decision with next steps to
+                  this email.
+                </p>
+
+                <Field label="Year, Program and School">
+                  <input
+                    type="text"
+                    required
+                    value={yearProgramSchool}
+                    onChange={(e) => setYearProgramSchool(e.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+
+                <Field label="Background Experience">
+                  <textarea
+                    rows={3}
+                    required
+                    placeholder="Tell us about your projects, extracurriculars, work experience, etc!"
+                    value={backgroundExperience}
+                    onChange={(e) => setBackgroundExperience(e.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+
+                <Field label="Why do you want to become a Mentor?">
+                  <textarea
+                    rows={3}
+                    required
+                    value={motivation}
+                    onChange={(e) => setMotivation(e.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+
+                <Field label="LinkedIn URL (Optional)">
+                  <textarea
+                    rows={2}
+                    value={linkedinUrl}
+                    onChange={(e) => setLinkedinUrl(e.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+              </>
+            )}
+
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                required
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-1 h-[18px] w-[18px] rounded-[6px] border border-[#9DA298] accent-[#51733A] focus:outline-none focus:ring-2 focus:ring-[#51733A]"
+              />
+              <span className="text-[15px] font-medium text-[#565D4E]">
+                I consent to creating an account and having the information
+                entered above, stored in ConnectEd&apos;s internal database.
+                <br />
+                <Link
+                  href="/privacy-policy"
+                  className="text-[#8E8E8E] underline"
+                >
+                  See Privacy Policy
+                </Link>
+              </span>
+            </label>
+
+            {error && (
+              <p className="text-[15px] font-medium text-red-600">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting || !consent}
+              className="w-full rounded-[15px] bg-[#51733A] py-2.5 text-[15px] font-medium text-[#FFFBEF] disabled:opacity-50"
+            >
+              {submitting
+                ? "Creating account…"
+                : path === "mentor_applicant"
+                  ? "Submit Application"
+                  : "Create Profile"}
+            </button>
+
+            <p className="text-center text-[15px] font-medium text-[#8E8E8E]">
+              Already have an account?{" "}
+              <Link href="/login" className="underline">
+                Login
+              </Link>
+            </p>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const inputClass =
+  "w-full rounded-[10px] border border-[#565D4E] bg-white px-3 py-2 text-[15px] font-medium text-[#2C3526] placeholder:text-[#8E8E8E] focus:outline-none focus:ring-2 focus:ring-[#51733A] focus:border-[#51733A]";
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block space-y-1">
+      <span className="block text-[15px] font-medium text-[#565D4E]">
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }
